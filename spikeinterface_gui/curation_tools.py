@@ -11,8 +11,8 @@ default_label_definitions = {
 
 empty_curation_data = {
     "manual_labels": [],
-    "merge_unit_groups": [],
-    "removed_units": []
+    "merges": [],
+    "removed": []
 }
 
 def adding_group(previous_groups, new_group):

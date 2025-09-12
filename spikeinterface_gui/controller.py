@@ -326,10 +326,14 @@ class Controller():
                 if "spikeinterface_gui" in zarr_root.keys() and "curation_data" in zarr_root["spikeinterface_gui"].attrs.keys():
                     curation_data = zarr_root["spikeinterface_gui"].attrs["curation_data"]
 
+            if curation_data['format_version'] == '1':
+                print('uh-oh!!!')
+                exit()
+
             if curation_data is None:
-                self.curation_data = empty_curation_data.copy()
-            else:
-                self.curation_data = curation_data
+                curation_data = empty_curation_data.copy()
+            
+            self.curation_data = curation_data
 
             self.has_default_quality_labels = False
             if "label_definitions" not in self.curation_data:
@@ -709,14 +713,14 @@ class Controller():
         if not self.curation:
             return
 
-        all_merged_units = sum(self.curation_data["merge_unit_groups"], [])
+        all_merged_units = sum(self.curation_data["merges"], [])
         for unit_id in removed_unit_ids:
-            if unit_id in self.curation_data["removed_units"]:
+            if unit_id in self.curation_data["removed"]:
                 continue
             # TODO: check if unit is already in a merge group
             if unit_id in all_merged_units:
                 continue
-            self.curation_data["removed_units"].append(unit_id)
+            self.curation_data["removed"].append(unit_id)
             if self.verbose:
                 print(f"Unit {unit_id} is removed from the curation data")
     
@@ -728,10 +732,10 @@ class Controller():
             return
 
         for unit_id in restore_unit_ids:
-            if unit_id in self.curation_data["removed_units"]:
+            if unit_id in self.curation_data["removed"]:
                 if self.verbose:
                     print(f"Unit {unit_id} is restored from the curation data")
-                self.curation_data["removed_units"].remove(unit_id)
+                self.curation_data["removed"].remove(unit_id)
 
     def make_manual_merge_if_possible(self, merge_unit_ids):
         """
@@ -750,10 +754,10 @@ class Controller():
             return False
 
         for unit_id in merge_unit_ids:
-            if unit_id in self.curation_data["removed_units"]:
+            if unit_id in self.curation_data["removed"]:
                 return False
-        merged_groups = adding_group(self.curation_data["merge_unit_groups"], merge_unit_ids)
-        self.curation_data["merge_unit_groups"] = merged_groups
+        merged_groups = adding_group(self.curation_data["merges"], merge_unit_ids)
+        self.curation_data["merges"] = merged_groups
         if self.verbose:
             print(f"Merged unit group: {merge_unit_ids}")
         return True
@@ -761,11 +765,11 @@ class Controller():
     def make_manual_restore_merge(self, merge_group_indices):
         if not self.curation:
             return
-        merge_groups_to_remove = [self.curation_data["merge_unit_groups"][merge_group_index] for merge_group_index in merge_group_indices]
+        merge_groups_to_remove = [self.curation_data["merges"][merge_group_index] for merge_group_index in merge_group_indices]
         for merge_group in merge_groups_to_remove:
             if self.verbose:
                 print(f"Unmerged merge group {merge_group}")
-            self.curation_data["merge_unit_groups"].remove(merge_group)
+            self.curation_data["merges"].remove(merge_group)
 
     def get_curation_label_definitions(self):
         # give only label definition with exclusive
@@ -785,9 +789,9 @@ class Controller():
         if ix is None:
             return
         lbl = self.curation_data["manual_labels"][ix]
-        if category in lbl:
-            labels = lbl[category]
-            return labels[0]
+        if 'labels' in lbl:
+            if category in lbl['labels']:
+                return lbl['labels'][category][0]
 
     def set_label_to_unit(self, unit_id, category, label):
         if label is None:
