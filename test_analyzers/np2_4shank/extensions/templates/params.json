@@ -1,0 +1,8 @@
+{
+    "ms_after": 2.0,
+    "ms_before": 1.0,
+    "operators": [
+        "average",
+        "std"
+    ]
+}

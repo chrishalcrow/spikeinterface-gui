@@ -1,0 +1,5 @@
+{
+    "class": "spikeinterface.postprocessing.isi.ComputeISIHistograms",
+    "module": "spikeinterface",
+    "version": "0.103.0"
+}

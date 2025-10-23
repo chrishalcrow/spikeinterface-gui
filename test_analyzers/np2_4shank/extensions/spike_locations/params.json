@@ -1,0 +1,11 @@
+{
+    "method": "center_of_mass",
+    "method_kwargs": {},
+    "ms_after": 0.5,
+    "ms_before": 0.5,
+    "spike_retriver_kwargs": {
+        "channel_from_template": true,
+        "peak_sign": "neg",
+        "radius_um": 50
+    }
+}

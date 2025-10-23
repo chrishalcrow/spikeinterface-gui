@@ -1,0 +1,6 @@
+{
+    "margin_size": null,
+    "max_spikes_per_unit": 500,
+    "method": "uniform",
+    "seed": null
+}

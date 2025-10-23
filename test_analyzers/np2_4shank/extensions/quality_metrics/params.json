@@ -1,0 +1,142 @@
+{
+    "delete_existing_metrics": false,
+    "metric_names": [
+        "num_spikes",
+        "firing_rate",
+        "presence_ratio",
+        "snr",
+        "isi_violation",
+        "rp_violation",
+        "sliding_rp_violation",
+        "amplitude_cutoff",
+        "amplitude_median",
+        "amplitude_cv",
+        "synchrony",
+        "firing_range",
+        "drift",
+        "sd_ratio",
+        "noise_cutoff",
+        "presence_coefficient"
+    ],
+    "metric_params": {
+        "amplitude_cutoff": {
+            "amplitudes_bins_min_ratio": 5,
+            "histogram_smoothing_value": 3,
+            "num_histogram_bins": 100,
+            "peak_sign": "neg"
+        },
+        "amplitude_cv": {
+            "amplitude_extension": "spike_amplitudes",
+            "average_num_spikes_per_bin": 50,
+            "min_num_bins": 10,
+            "percentiles": [
+                5,
+                95
+            ]
+        },
+        "amplitude_median": {
+            "peak_sign": "neg"
+        },
+        "d_prime": {},
+        "drift": {
+            "direction": "y",
+            "interval_s": 60,
+            "min_num_bins": 2,
+            "min_spikes_per_interval": 100
+        },
+        "firing_range": {
+            "bin_size_s": 5,
+            "percentiles": [
+                5,
+                95
+            ]
+        },
+        "firing_rate": {},
+        "isi_violation": {
+            "isi_threshold_ms": 1.5,
+            "min_isi_ms": 0
+        },
+        "isolation_distance": {},
+        "l_ratio": {},
+        "nearest_neighbor": {
+            "max_spikes": 10000,
+            "n_neighbors": 5
+        },
+        "nn_isolation": {
+            "max_spikes": 10000,
+            "min_fr": 0.0,
+            "min_spikes": 10,
+            "n_components": 10,
+            "n_neighbors": 4,
+            "peak_sign": "neg",
+            "radius_um": 100
+        },
+        "nn_noise_overlap": {
+            "max_spikes": 10000,
+            "min_fr": 0.0,
+            "min_spikes": 10,
+            "n_components": 10,
+            "n_neighbors": 4,
+            "peak_sign": "neg",
+            "radius_um": 100
+        },
+        "noise_cutoff": {
+            "high_quantile": 0.25,
+            "low_quantile": 0.1,
+            "n_bins": 100
+        },
+        "num_spikes": {},
+        "presence_coefficient": {},
+        "presence_ratio": {
+            "bin_duration_s": 60,
+            "mean_fr_ratio_thresh": 0.0
+        },
+        "rp_violation": {
+            "censored_period_ms": 0.0,
+            "refractory_period_ms": 1.0
+        },
+        "sd_ratio": {
+            "censored_period_ms": 4.0,
+            "correct_for_drift": true,
+            "correct_for_template_itself": true
+        },
+        "silhouette": {
+            "method": [
+                "simplified"
+            ]
+        },
+        "sliding_rp_violation": {
+            "bin_size_ms": 0.25,
+            "contamination_values": null,
+            "exclude_ref_period_below_ms": 0.5,
+            "max_ref_period_ms": 10,
+            "min_spikes": 0,
+            "window_size_s": 1
+        },
+        "snr": {
+            "peak_mode": "extremum",
+            "peak_sign": "neg"
+        },
+        "synchrony": {}
+    },
+    "metrics_to_compute": [
+        "num_spikes",
+        "firing_rate",
+        "presence_ratio",
+        "snr",
+        "isi_violation",
+        "rp_violation",
+        "sliding_rp_violation",
+        "amplitude_cutoff",
+        "amplitude_median",
+        "amplitude_cv",
+        "synchrony",
+        "firing_range",
+        "drift",
+        "sd_ratio",
+        "noise_cutoff"
+    ],
+    "peak_sign": null,
+    "seed": null,
+    "skip_pc_metrics": false
+}
