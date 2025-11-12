@@ -985,11 +985,11 @@ class Controller():
         if ix is not None:
             lbl = self.curation_data["manual_labels"][ix]
             if category in lbl:
-                lbl[category] = [label]
+                lbl["labels"][category] = [label]
             else:
-                lbl[category] = [label]
+                lbl["labels"][category] = [label]
         else:
-            lbl = {"unit_id": unit_id, category:[label]}
+            lbl = {"unit_id": unit_id, "labels": {category: [label]}}
             self.curation_data["manual_labels"].append(lbl)
         if self.verbose:
             print(f"Set label {category} to {label} for unit {unit_id}")
