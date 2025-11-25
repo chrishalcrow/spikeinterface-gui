@@ -52,7 +52,7 @@ def get_layout_description(preset_name, layout=None):
         return _presets[preset_name]
 
 default_layout = dict(
-    zone1=['curation', 'spikelist'],
+    zone1=['image', 'spikelist'],
     zone2=['unitlist', 'merge'],
     zone3=['trace', 'tracemap',  'spikeamplitude', 'spikedepth', 'spikerate'],
     zone4=[],
