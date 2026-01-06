@@ -14,7 +14,8 @@ empty_curation_data = {
     "manual_labels": [],
     "merges": [],
     "splits": [],
-    "removed": []
+    "removed": [],
+    "discard_spikes": []
 }
 
 def add_merge(previous_merges, new_merge_unit_ids):

@@ -136,6 +136,35 @@ class BaseScatterView(ViewBase):
 
         visible_unit_id = visible_unit_ids[0]
 
+
+    def discard(self):
+        """
+        Add a `discard_spikes` to the curation data based on the lasso vertices.
+        """
+        # split is only possible if one unit is visible
+        visible_unit_ids = self.controller.get_visible_unit_ids()
+        if len(visible_unit_ids) != 1:
+            self.warning("Discard is only possible if one unit is visible.")
+            return
+        visible_unit_id = visible_unit_ids[0]
+
+        if self.controller.num_segments > 1:
+            # check that lasso vertices are defined for all segments
+            if not all(self._lasso_vertices[segment_index] is not None for segment_index in range(self.controller.num_segments)):
+                # Use the new continue_from_user pattern
+                self.continue_from_user(
+                    "Not all segments have lasso selection. "
+                    "Do you want to proceed with the discard for the segments with selection only?",
+                    self._perform_discard_spikes, visible_unit_id
+                )
+                return  # Exit early - risky_action will be called if user continues
+            else:
+                self._perform_discard_spikes(visible_unit_id)
+        else:
+            self._perform_discard_spikes(visible_unit_id)
+
+        visible_unit_id = visible_unit_ids[0]
+
     def _perform_split(self, visible_unit_id):
         """
         Perform the actual split operation.
@@ -154,6 +183,24 @@ class BaseScatterView(ViewBase):
         self.refresh()
         self.notify_manual_curation_updated()
         
+
+    def _perform_discard_spikes(self, visible_unit_id):
+        """
+        Perform the actual `discard_spikes` operation.
+        """
+        success = self.controller.make_manual_discard_spikes_if_possible(
+            unit_id=visible_unit_id,
+        )
+        if not success:
+            self.warning(
+                "Discard spikes could not be performed. Ensure unit is not already removed "
+            )
+            return
+        
+        # Clear the lasso vertices after discarding the spikes
+        self._lasso_vertices = {segment_index: None for segment_index in range(self.controller.num_segments)}
+        self.refresh()
+        self.notify_manual_curation_updated()
 
     def on_unit_visibility_changed(self):
         self._lasso_vertices = {segment_index: None for segment_index in range(self.controller.num_segments)}
@@ -195,6 +242,9 @@ class BaseScatterView(ViewBase):
             self.split_but = QT.QPushButton("split")
             tb.addWidget(self.split_but)
             self.split_but.clicked.connect(self.split)
+            self.discard_but = QT.QPushButton("discard")
+            tb.addWidget(self.discard_but)
+            self.discard_but.clicked.connect(self.discard)
         h = QT.QHBoxLayout()
         self.layout.addLayout(h)
         
@@ -376,6 +426,9 @@ class BaseScatterView(ViewBase):
             self.split_button = pn.widgets.Button(name="Split", button_type="primary")
             self.split_button.on_click(self._panel_split)
 
+            self.discard_button = pn.widgets.Button(name="Discard", button_type="primary")
+            self.discard_button.on_click(self._panel_discard)
+
         self.y_range = Range1d(self._data_min, self._data_max)
         self.scatter_source = ColumnDataSource(data={"x": [], "y": [], "color": []})
         self.scatter_fig = bpl.figure(
@@ -428,10 +481,14 @@ class BaseScatterView(ViewBase):
         toolbar_elements = [self.segment_selector, self.select_toggle_button]
         if self.controller.curation:
             toolbar_elements.append(self.split_button)
+            toolbar_elements.append(self.discard_button)
 
         if self.controller.curation:
             from .utils_panel import KeyboardShortcut, KeyboardShortcuts
-            shortcuts = [KeyboardShortcut(key="s", name="split", ctrlKey=True)]
+            shortcuts = [
+                KeyboardShortcut(key="s", name="split", ctrlKey=True), 
+                # KeyboardShortcut(key="d", name="discard", ctrlKey=True)
+            ]
             shortcuts_component = KeyboardShortcuts(shortcuts=shortcuts)
             shortcuts_component.on_msg(self._panel_handle_shortcut)
             toolbar_elements.append(shortcuts_component)
@@ -578,6 +635,12 @@ class BaseScatterView(ViewBase):
         Handle split button click in panel mode.
         """
         self.split()
+
+    def _panel_discard(self, event):
+        """
+        Handle discard button click in panel mode.
+        """
+        self.discard()
 
     def _panel_update_selected_spikes(self):
         # handle selected spikes

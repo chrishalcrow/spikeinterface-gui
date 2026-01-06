@@ -359,6 +359,9 @@ class Controller():
             if curation_data is None:
                 curation_data = empty_curation_data.copy()
 
+            if curation_data.get("discard_spikes") is None:
+                curation_data["discard_spikes"] = []
+
             self.curation_data = curation_data
 
             self.has_default_quality_labels = False
@@ -951,6 +954,41 @@ class Controller():
             print(f"Split unit {unit_id} with {len(indices)} spikes")
         return True
     
+
+    def make_manual_discard_spikes_if_possible(self, unit_id):
+        """
+        Check if the a unit can have its spikes discarded
+        If unit_id is already in the removed list then the discard is skipped.
+        """
+        if not self.curation:
+            return False
+
+        if unit_id in self.curation_data["removed"]:
+            return False
+
+        # check that selected indices are not empty and from unit_id
+        visible_unit_ids = self.get_visible_unit_ids()
+        if unit_id not in visible_unit_ids:
+            return False
+        indices = self.get_indices_spike_selected()
+        if len(indices) == 0:
+            return False
+        spike_inds = self.get_spike_indices(unit_id, segment_index=None)
+        if not np.all(np.isin(indices, spike_inds)):
+            return False
+
+        # convert selected indices to indices within the spike train of the unit
+        indices = [np.where(spike_inds == ind)[0][0] for ind in indices]
+
+        new_discard = {
+            "unit_id": unit_id,
+            "indices": indices
+        }
+        self.curation_data["discard_spikes"].append(new_discard)
+        if self.verbose:
+            print(f"Discarded {len(indices)} spikes from unit {unit_id}")
+        return True
+    
     def make_manual_restore_merge(self, merge_indices):
         if not self.curation:
             return
@@ -960,6 +998,11 @@ class Controller():
         if not self.curation:
             return
         self.curation_data["splits"] = [s for i, s in enumerate(self.curation_data["splits"]) if i not in split_indices]
+
+    def make_manual_restore_discard(self, discard_indices):
+        if not self.curation:
+            return
+        self.curation_data["discard_spikes"] = [s for i, s in enumerate(self.curation_data["discard_spikes"]) if i not in discard_indices]
 
     def get_curation_label_definitions(self):
         # give only label definition with exclusive

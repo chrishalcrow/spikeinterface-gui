@@ -37,6 +37,10 @@ class SpikeAmplitudeView(BaseScatterView):
         shortcut_split.setKey(QT.QKeySequence("ctrl+s"))
         shortcut_split.activated.connect(self.split)
 
+        # shortcut_discard = QT.QShortcut(self.qt_widget)
+        # shortcut_discard.setKey(QT.QKeySequence("ctrl+q"))
+        # shortcut_discard.activated.connect(self.discard)
+
     def _qt_refresh(self):
         super()._qt_refresh()
         # average noise across channels

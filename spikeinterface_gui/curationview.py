@@ -51,6 +51,18 @@ class CurationView(ViewBase):
             self.notify_manual_curation_updated()
             self.refresh()
 
+    def undiscard(self):
+        if self.backend == 'qt':
+            discard_indices = self._qt_get_discard_table_row()
+        else:
+            discard_indices = self._panel_get_discard_table_row()
+        if discard_indices is not None:
+            self.controller.make_manual_restore_discard(discard_indices)
+            self.controller.set_indices_spike_selected([])
+            self.notify_spike_selection_changed()
+            self.notify_manual_curation_updated()
+            self.refresh()
+
     def select_and_notify_split(self, split_unit_id):
         self.controller.set_visible_unit_ids([split_unit_id])
         self.notify_unit_visibility_changed()
@@ -58,6 +70,15 @@ class CurationView(ViewBase):
         active_split = [s for s in self.controller.curation_data['splits'] if s['unit_id'] == split_unit_id][0]
         split_indices = active_split['indices'][0]
         self.controller.set_indices_spike_selected(spike_inds[split_indices])
+        self.notify_spike_selection_changed()
+
+    def select_and_notify_discard(self, split_unit_id):
+        self.controller.set_visible_unit_ids([split_unit_id])
+        self.notify_unit_visibility_changed()
+        spike_inds = self.controller.get_spike_indices(split_unit_id, segment_index=None)
+        active_discard = [s for s in self.controller.curation_data['discard_spikes'] if s['unit_id'] == split_unit_id][0]
+        discard_indices = active_discard['indices']
+        self.controller.set_indices_spike_selected(spike_inds[discard_indices])
         self.notify_spike_selection_changed()
 
     ## Qt
@@ -130,6 +151,21 @@ class CurationView(ViewBase):
         shortcut_unsplit.setKey(QT.QKeySequence("ctrl+x"))
         shortcut_unsplit.activated.connect(self.unsplit)
 
+        v = QT.QVBoxLayout()
+        h.addLayout(v)
+        self.table_discard = QT.QTableWidget(selectionMode=QT.QAbstractItemView.SingleSelection,
+                                     selectionBehavior=QT.QAbstractItemView.SelectRows)
+        v.addWidget(self.table_discard)
+        self.table_discard.setContextMenuPolicy(QT.Qt.CustomContextMenu)
+        self.table_discard.customContextMenuRequested.connect(self._qt_open_context_menu_discard)
+        self.table_discard.itemSelectionChanged.connect(self._qt_on_item_selection_changed_discard)
+        self.discard_menu = QT.QMenu()
+        act = self.discard_menu.addAction('Undo discard')
+        act.triggered.connect(self.undiscard)
+        #shortcut_undiscard = QT.QShortcut(self.qt_widget)
+        #shortcut_undiscard.setKey(QT.QKeySequence("ctrl+x"))
+        #shortcut_undiscard.activated.connect(self.undiscard)
+
     def _qt_refresh(self):
         from .myqt import QT
         # Merged
@@ -183,6 +219,23 @@ class CurationView(ViewBase):
             item.unit_id = unit_id
         self.table_split.resizeColumnToContents(0)
 
+        # Discard spikes
+        discard_spikes = self.controller.curation_data["discard_spikes"]
+        self.table_discard.clear()
+        self.table_discard.setRowCount(len(discard_spikes))
+        self.table_discard.setColumnCount(1)
+        self.table_discard.setHorizontalHeaderLabels(["discards"])
+        self.table_discard.setSortingEnabled(False)
+        for i, discard in enumerate(discard_spikes):
+            unit_id = discard["unit_id"]
+            num_indices = len(discard["indices"])
+            num_spikes = self.controller.num_spikes[unit_id]
+            num_discards = f"({num_indices}/{num_spikes})"
+            item = QT.QTableWidgetItem(f"{unit_id} {num_discards}")
+            item.setFlags(QT.Qt.ItemIsEnabled|QT.Qt.ItemIsSelectable)
+            self.table_discard.setItem(i, 0, item)
+            item.unit_id = unit_id
+        self.table_discard.resizeColumnToContents(0)
 
 
     def _qt_get_delete_table_selection(self):
@@ -205,6 +258,13 @@ class CurationView(ViewBase):
             return None
         else:
             return [s.row() for s in selected_items]
+        
+    def _qt_get_discard_table_row(self):
+        selected_items = self.table_discard.selectedItems()
+        if len(selected_items) == 0:
+            return None
+        else:
+            return [s.row() for s in selected_items]
 
     def _qt_open_context_menu_delete(self):
         self.delete_menu.popup(self.qt_widget.cursor().pos())
@@ -214,6 +274,9 @@ class CurationView(ViewBase):
 
     def _qt_open_context_menu_split(self):
         self.split_menu.popup(self.qt_widget.cursor().pos())
+
+    def _qt_open_context_menu_discard(self):
+        self.discard_menu.popup(self.qt_widget.cursor().pos())
     
     def _qt_on_item_selection_changed_merge(self):
         if len(self.table_merge.selectedIndexes()) == 0:
@@ -239,6 +302,18 @@ class CurationView(ViewBase):
         split_unit_str = self.table_split.item(ind, 0).text()
         split_unit_id = dtype.type(split_unit_str.split(" ")[0])
         self.select_and_notify_split(split_unit_id)
+
+    def _qt_on_item_selection_changed_discard(self):
+        if len(self.table_discard.selectedIndexes()) == 0:
+            return
+
+        self._qt_clear_selection(self.table_discard)
+
+        dtype = self.controller.unit_ids.dtype
+        ind = self.table_discard.selectedIndexes()[0].row()
+        split_unit_str = self.table_discard.item(ind, 0).text()
+        split_unit_id = dtype.type(split_unit_str.split(" ")[0])
+        self.select_and_notify_discard(split_unit_id)
 
     def _qt_on_item_selection_changed_delete(self):
         if len(self.table_delete.selectedIndexes()) == 0:
@@ -304,6 +379,7 @@ class CurationView(ViewBase):
         delete_df = pd.DataFrame({"removed": []})
         merge_df = pd.DataFrame({"merges": []})
         split_df = pd.DataFrame({"splits": []})        
+        discard_df = pd.DataFrame({"discards": []})
 
         # Create tables
         self.table_delete = SelectableTabulator(
@@ -347,10 +423,23 @@ class CurationView(ViewBase):
             conditional_shortcut=self._conditional_refresh_split,
             column_callbacks={"splits": self._panel_on_split_col},
         )
+        self.table_discard = SelectableTabulator(
+            discard_df,
+            show_index=False,
+            disabled=True,
+            sortable=False,
+            selectable=1,
+            formatters={"discards": "plaintext"},
+            sizing_mode="stretch_width",
+            parent_view=self,
+            conditional_shortcut=self._conditional_refresh_discard,
+            column_callbacks={"discards": self._panel_on_discard_col},
+        )
 
         self.table_delete.param.watch(self._panel_update_unit_visibility, "selection")
         self.table_merge.param.watch(self._panel_update_unit_visibility, "selection")
         self.table_split.param.watch(self._panel_update_unit_visibility, "selection")
+        self.table_discard.param.watch(self._panel_update_unit_visibility, "selection")
 
         # Create buttons
         save_button = pn.widgets.Button(
@@ -409,12 +498,13 @@ class CurationView(ViewBase):
             KeyboardShortcut(name="restore", key="r", ctrlKey=True),
             KeyboardShortcut(name="unmerge", key="u", ctrlKey=True),
             KeyboardShortcut(name="unsplit", key="x", ctrlKey=True),
+            # KeyboardShortcut(name="undiscard", key="q", ctrlKey=True),
         ]
         shortcuts_component = KeyboardShortcuts(shortcuts=shortcuts)
         shortcuts_component.on_msg(self._panel_handle_shortcut)
 
         # Create main layout with proper sizing
-        sections = pn.Row(self.table_delete, self.table_merge, self.table_split,
+        sections = pn.Row(self.table_delete, self.table_merge, self.table_split, self.table_discard,
                           sizing_mode="stretch_width")
         self.layout = pn.Column(
             save_sections,
@@ -466,6 +556,18 @@ class CurationView(ViewBase):
         df = pd.DataFrame({"splits": split_units_str})
         self.table_split.value = df
         self.table_split.selection = []
+
+        # Discards
+        discard_units_str = []
+        num_spikes = self.controller.num_spikes
+        for discard in self.controller.curation_data["discard_spikes"]:
+            unit_id = discard["unit_id"]
+            num_indices = len(discard["indices"])
+            num_discards = f"({num_indices}/{num_spikes[unit_id]})"
+            discard_units_str.append(f"{unit_id} {num_discards}")
+        df = pd.DataFrame({"discards": discard_units_str})
+        self.table_discard.value = df
+        self.table_discard.selection = []
 
         if not self.controller.current_curation_saved:
             self.ensure_save_warning_message()
@@ -594,6 +696,13 @@ class CurationView(ViewBase):
             return None
         else:
             return selected_items
+        
+    def _panel_get_discard_table_row(self):
+        selected_items = self.table_discard.selection
+        if len(selected_items) == 0:
+            return None
+        else:
+            return selected_items
 
     def _panel_handle_shortcut(self, event):
         if event.data == "restore":
@@ -602,6 +711,8 @@ class CurationView(ViewBase):
             self.unmerge()
         elif event.data == "unsplit":
             self.unsplit()
+        elif event.data == "undiscard":
+            self.undiscard()
 
     def _panel_on_unit_visibility_changed(self):
         for table in [self.table_delete, self.table_merge, self.table_split]:
@@ -627,6 +738,15 @@ class CurationView(ViewBase):
         split_unit_id = self.controller.unit_ids.dtype.type(split_unit_str.split(" ")[0])
         self.select_and_notify_split(split_unit_id)
 
+    def _panel_on_discard_col(self, row):
+        self.active_table = "discard"
+        self.table_delete.selection = []
+        self.table_merge.selection = []
+        # set discard selection
+        discard_unit_str = self.table_discard.value["discards"].values[row]
+        discard_unit_id = self.controller.unit_ids.dtype.type(discard_unit_str.split(" ")[0])
+        self.select_and_notify_discard(discard_unit_id)
+
     def _conditional_refresh_merge(self):
         # Check if the view is active before refreshing
         if self.is_view_active() and self.active_table == "merge":
@@ -644,6 +764,13 @@ class CurationView(ViewBase):
     def _conditional_refresh_split(self):
         # Check if the view is active before refreshing
         if self.is_view_active() and self.active_table == "split":
+            return True
+        else:
+            return False
+        
+    def _conditional_refresh_discard(self):
+        # Check if the view is active before refreshing
+        if self.is_view_active() and self.active_table == "discard":
             return True
         else:
             return False
