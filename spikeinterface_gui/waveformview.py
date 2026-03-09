@@ -94,6 +94,25 @@ class WaveformView(ViewBase):
         return common_channel_indexes
 
     def get_spike_waveform(self, ind):
+
+        all_spikes = self.controller.analyzer.sorting.to_spike_vector()
+        sample_index = all_spikes[ind]['sample_index']
+
+        wf_ext = self.controller.analyzer.get_extension("waveforms")
+        rs_ext = self.controller.analyzer.get_extension("random_spikes")
+
+        visible_unit_id = self.controller.get_visible_unit_ids()[0]
+        random_spikes = rs_ext.get_random_spikes()
+        random_spike_train = random_spikes[random_spikes['unit_index'] == visible_unit_id]["sample_index"]
+
+        nbefore, nafter = self.controller.get_waveform_sweep()
+        width = nbefore + nafter
+
+        if sample_index in random_spike_train:
+            wvfrm_index = list(random_spike_train).index(sample_index)
+            wf = wf_ext.get_waveforms_one_unit(visible_unit_id, force_dense=True)[wvfrm_index]
+            return wf, width
+
         if not self.controller.has_extension("recording") or not self.controller.with_traces:
             return None, None
         seg_num = self.controller.spikes["segment_index"][ind]
